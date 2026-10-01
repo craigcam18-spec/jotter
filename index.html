@@ -1,0 +1,679 @@
+<!doctype html>
+<html lang="en-GB">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Jotter Planner</title>
+<meta name="description" content="A lesson planner for a primary teacher: timetable, lessons, and a day-disrupted button.">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Jotter">
+<meta name="theme-color" content="#1f5c99">
+<!--PREVIEW-START-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a jotter on the desk. App bar on top, the day or week as the page, the lesson opens as a ruled jotter sheet with a red margin. */
+:root{
+  --paper:#f3f6f8; --surface:#ffffff; --sunk:#e9eef2;
+  --ink:#1b2830; --muted:#5a6a75; --line:#d5dde3;
+  --accent:#1f5c99; --accent-ink:#ffffff; --accent-soft:#e1ecf8;
+  --mark:#ffe680; --margin:#d9463f; --rule:#dbe6f1;
+  --ok:#2f7d4f; --warn:#a15c00;
+  --chipL:89%; --chipS:62%; --stripeL:68%;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Atkinson Hyperlegible", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#11171c; --surface:#19222a; --sunk:#0d1216;
+  --ink:#e5ecf0; --muted:#95a5b0; --line:#2a3741;
+  --accent:#86b6ea; --accent-ink:#0d1a27; --accent-soft:#1c2e41;
+  --mark:#5a4b0e; --margin:#e0716b; --rule:#22303b;
+  --ok:#7fcf9c; --warn:#f0b35c;
+  --chipL:27%; --chipS:40%; --stripeL:58%; color-scheme:dark;
+}}
+:root[data-theme="dark"]{
+  --paper:#11171c; --surface:#19222a; --sunk:#0d1216;
+  --ink:#e5ecf0; --muted:#95a5b0; --line:#2a3741;
+  --accent:#86b6ea; --accent-ink:#0d1a27; --accent-soft:#1c2e41;
+  --mark:#5a4b0e; --margin:#e0716b; --rule:#22303b;
+  --ok:#7fcf9c; --warn:#f0b35c;
+  --chipL:27%; --chipS:40%; --stripeL:58%; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:16px/1.5 var(--body);-webkit-text-size-adjust:100%}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3{font-family:var(--display);font-weight:700;line-height:1.15;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:clamp(1.6rem,3.5vw,2.2rem)}
+h2{font-size:1.25rem}
+h3{font-size:1.02rem}
+.muted{color:var(--muted)}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.label{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);font-weight:700}
+
+/* app bar */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.bar-in{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:10px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.brand{font-family:var(--display);font-weight:700;font-size:1.3rem;display:flex;align-items:center;gap:8px}
+.brand svg{width:26px;height:26px}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{border:0;background:none;padding:8px 14px;border-radius:999px;cursor:pointer;font-weight:700;color:var(--muted)}
+nav button[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+nav button:hover:not([aria-current="page"]){background:var(--sunk);color:var(--ink)}
+.sync{margin-left:auto;font-size:.82rem;display:flex;align-items:center;gap:6px;color:var(--muted);border:0;background:none;cursor:pointer;padding:6px 8px;border-radius:8px}
+.sync i{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block}
+.sync[data-s="ok"] i{background:var(--ok)}
+.sync[data-s="syncing"] i{background:var(--accent)}
+.sync[data-s="error"] i,.sync[data-s="offline"] i{background:var(--warn)}
+
+main{max-width:1180px;margin:0 auto;padding-inline:16px;padding-block:22px 60px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.head .sub{margin-top:4px}
+.navbtns{display:flex;gap:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--surface);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:700;line-height:1.2}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.ghost{background:none;border-color:transparent;color:var(--accent);padding-inline:6px}
+.btn.danger{color:var(--margin)}
+.btn.sm{padding:5px 10px;font-size:.88rem}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+
+.cols{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+@media (max-width:860px){.cols{grid-template-columns:minmax(0,1fr)}}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:10px}
+.stack{display:grid;gap:16px}
+
+/* subject chip */
+.chip{--h:210;display:inline-flex;align-items:center;gap:6px;background:hsl(var(--h) var(--chipS) var(--chipL));color:var(--ink);padding:2px 10px;border-radius:999px;font-size:.8rem;font-weight:700;white-space:nowrap}
+.chip.none{background:var(--sunk);color:var(--muted)}
+
+/* day list */
+.day{display:grid;gap:8px}
+.slot{display:grid;grid-template-columns:92px minmax(0,1fr) auto;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;border-left:6px solid hsl(var(--h,210) 55% var(--stripeL))}
+.slot.now{box-shadow:0 0 0 3px var(--accent-soft);border-color:var(--accent)}
+.slot .time{font-family:var(--mono);font-size:.85rem;color:var(--muted);line-height:1.3}
+.slot .open{all:unset;cursor:pointer;display:grid;gap:3px;min-width:0}
+.slot .open:focus-visible{outline:3px solid var(--accent);outline-offset:4px;border-radius:4px}
+.slot .title{font-weight:700;font-size:1.05rem}
+.slot .title.empty{color:var(--accent);font-weight:700}
+.slot .li{color:var(--muted);font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.slot.brk{background:none;border-style:dashed;border-left-width:1px;padding-block:6px;grid-template-columns:92px 1fr}
+.slot.brk .open{cursor:default}
+.nowtag{background:var(--mark);color:var(--ink);font-size:.7rem;font-weight:700;padding:1px 7px;border-radius:4px;letter-spacing:.06em;text-transform:uppercase}
+.tick{width:38px;height:38px;border-radius:50%;border:2px solid var(--line);background:var(--surface);cursor:pointer;display:grid;place-items:center;color:transparent}
+.tick[aria-pressed="true"]{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.tick svg{width:18px;height:18px}
+@media (max-width:520px){.slot{grid-template-columns:minmax(0,1fr) auto}.slot .time{grid-column:1/-1}.slot.brk{grid-template-columns:auto 1fr}.slot.brk .time{grid-column:auto}}
+
+.stat{display:flex;gap:18px}
+.stat b{display:block;font-family:var(--display);font-size:1.8rem;line-height:1}
+.gaps{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.gaps button{all:unset;cursor:pointer;display:flex;gap:8px;align-items:center;width:100%;padding:6px 8px;border-radius:6px;box-sizing:border-box}
+.gaps button:hover,.gaps button:focus-visible{background:var(--sunk)}
+.gaps .d{font-family:var(--mono);font-size:.8rem;color:var(--muted);min-width:78px}
+.disrupt{display:grid;gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.disrupt label{display:flex;gap:8px;align-items:center;font-size:.95rem}
+.disrupt label.off{color:var(--muted)}
+
+.closed{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);padding:36px 20px;text-align:center}
+
+/* week grid */
+.wk{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.wk table{border-collapse:collapse;width:100%;min-width:760px;table-layout:fixed}
+.wk th,.wk td{border-bottom:1px solid var(--line);border-right:1px solid var(--line);padding:6px;vertical-align:top;text-align:left}
+.wk th:last-child,.wk td:last-child{border-right:0}
+.wk thead th{background:var(--sunk);font-size:.85rem}
+.wk thead th.today{background:var(--mark)}
+.wk th.rowh{width:120px;font-weight:400}
+.wk .rowh b{display:block;font-size:.85rem}
+.wk .rowh span{font-family:var(--mono);font-size:.75rem;color:var(--muted)}
+.wk tr.brk td,.wk tr.brk th{background:var(--sunk);padding-block:3px;font-size:.78rem;color:var(--muted)}
+.cell{all:unset;box-sizing:border-box;cursor:pointer;display:grid;gap:4px;width:100%;min-height:64px;padding:6px;border-radius:6px;background:hsl(var(--h,210) var(--chipS) var(--chipL) / .45)}
+.cell:hover,.cell:focus-visible{outline:2px solid var(--accent)}
+.cell .t{font-weight:700;font-size:.86rem;line-height:1.3;overflow-wrap:anywhere}
+.cell .t.empty{color:var(--accent);font-weight:400}
+.cell .s{font-size:.72rem;font-weight:700;color:var(--muted);display:flex;justify-content:space-between;gap:4px}
+.cell.done .t::before{content:"✓ ";color:var(--ok)}
+.cell.hol{background:var(--sunk);cursor:default}
+.holtag{display:block;font-weight:400;font-size:.72rem;color:var(--warn)}
+
+/* subject run */
+.run{display:grid;gap:0;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.run .r{display:grid;grid-template-columns:120px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.run .r:last-child{border-bottom:0}
+.run .r.wkstart{border-top:3px solid var(--sunk)}
+.run .dt{font-family:var(--mono);font-size:.82rem;color:var(--muted)}
+.run .open{all:unset;cursor:pointer;min-width:0}
+.run .open:focus-visible{outline:3px solid var(--accent);border-radius:4px}
+.run .done{color:var(--ok);font-weight:700;font-size:.82rem}
+.run .acts{display:flex;gap:4px;flex-wrap:wrap;justify-content:flex-end}
+@media (max-width:560px){.run .r{grid-template-columns:minmax(0,1fr)}.run .acts{justify-content:flex-start}}
+.subjpick{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px}
+.subjpick button{all:unset;cursor:pointer;border-radius:999px}
+.subjpick button[aria-pressed="true"] .chip{outline:2px solid var(--ink)}
+.subjpick button:focus-visible{outline:3px solid var(--accent)}
+
+/* setup */
+.setup section{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:18px;display:grid;gap:12px}
+.setup{display:grid;gap:20px}
+.tt{overflow-x:auto}
+.tt table{border-collapse:collapse;min-width:820px;width:100%}
+.tt th,.tt td{padding:4px;text-align:left;font-size:.9rem}
+.tt thead th{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+input[type=text],input[type=time],input[type=date],input[type=email],input[type=password],input[type=url],select,textarea{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:6px 8px;width:100%;min-width:0}
+input[type=time]{min-width:92px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.subjrow{display:grid;grid-template-columns:minmax(0,1fr) 140px auto auto;gap:8px;align-items:center}
+@media (max-width:520px){.subjrow{grid-template-columns:minmax(0,1fr) auto}}
+.holrow{display:grid;grid-template-columns:minmax(0,1.4fr) 1fr 1fr auto;gap:8px;align-items:center}
+@media (max-width:620px){.holrow{grid-template-columns:1fr 1fr}}
+.note{font-size:.9rem;color:var(--muted);max-width:65ch}
+.example{background:var(--mark);color:var(--ink);padding:10px 12px;border-radius:8px;display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+/* lesson sheet */
+.scrim{position:fixed;inset:0;background:rgb(10 20 30 / .4);z-index:20;display:flex;justify-content:flex-end}
+.sheet{background:var(--surface);width:min(640px,100%);height:100%;overflow-y:auto;padding-bottom:env(safe-area-inset-bottom,0px);display:flex;flex-direction:column;box-shadow:-10px 0 30px rgb(0 0 0 / .15)}
+.sheet-h{position:sticky;top:0;background:var(--surface);z-index:1;padding:calc(12px + env(safe-area-inset-top,0px)) 16px 12px;border-bottom:1px solid var(--line);display:grid;gap:8px}
+.sheet-h .row{justify-content:space-between}
+.jot{flex:1;padding:18px 16px 30px 44px;position:relative;display:grid;gap:14px;align-content:start;
+  background-image:linear-gradient(to right,transparent 30px,var(--margin) 30px,var(--margin) 32px,transparent 32px),
+  repeating-linear-gradient(to bottom,transparent 0,transparent 31px,var(--rule) 31px,var(--rule) 32px)}
+.jot label{display:grid;gap:4px}
+.jot textarea,.jot input{background:color-mix(in srgb,var(--surface) 85%,transparent)}
+.jot textarea{resize:vertical;min-height:64px;line-height:1.5}
+#ed-title{font-family:var(--display);font-size:1.3rem;font-weight:700;padding:8px 10px}
+.links{display:flex;gap:6px;flex-wrap:wrap}
+.links a{font-size:.85rem;color:var(--accent);overflow-wrap:anywhere}
+.sheet-f{display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line);position:sticky;bottom:0;background:var(--surface)}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--paper);padding:10px 16px;border-radius:8px;z-index:30;font-weight:700;max-width:calc(100% - 32px)}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:slide .18s ease-out}@keyframes slide{from{transform:translateX(30px);opacity:.6}}}
+</style>
+<!--PREVIEW-END-->
+</head>
+<body>
+<!--BODY-START-->
+<header class="bar"><div class="bar-in">
+  <div class="brand"><svg viewBox="0 0 32 32" aria-hidden="true"><rect x="4" y="3" width="24" height="26" rx="3" fill="var(--accent)"/><rect x="9" y="3" width="1.6" height="26" fill="var(--margin)"/><rect x="13" y="10" width="11" height="2" rx="1" fill="var(--accent-ink)"/><rect x="13" y="15" width="11" height="2" rx="1" fill="var(--accent-ink)"/><rect x="13" y="20" width="7" height="2" rx="1" fill="var(--accent-ink)"/></svg>Jotter</div>
+  <nav aria-label="Views">
+    <button data-act="view" data-v="today">Today</button>
+    <button data-act="view" data-v="week">Week</button>
+    <button data-act="view" data-v="subjects">Subjects</button>
+    <button data-act="view" data-v="setup">Setup</button>
+  </nav>
+  <button class="sync" id="sync" data-act="view" data-v="setup" data-s="local"><i></i><span>Saved on this device</span></button>
+</div></header>
+<main id="view"></main>
+<div id="sheet-root"></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<!--BODY-END-->
+<script>
+/* ============ Sync settings (fill these in once, see README) ============ */
+const SUPABASE_URL = "";      // e.g. "https://abcdxyz.supabase.co"
+const SUPABASE_ANON_KEY = ""; // the "anon public" key from Supabase > Project settings > API
+/* ======================================================================= */
+
+const KEY = "jotter.v1", CFG_KEY = "jotter.cfg";
+const DAYS = ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday","Sunday"];
+const MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+let S, view = "today", viewDate = iso(new Date()), curSubject = null, openKey = null, disruptOpen = false;
+
+/* ---------- dates ---------- */
+function iso(d){return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")}
+function parseISO(s){const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)}
+function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x}
+function dow(d){return (d.getDay()+6)%7}
+function mondayOf(d){return addDays(new Date(d.getFullYear(),d.getMonth(),d.getDate()),-dow(d))}
+function short(d){return DAYS[dow(d)].slice(0,3)+" "+d.getDate()+" "+MONTHS[d.getMonth()].slice(0,3)}
+function holidayOn(ds){return S.holidays.find(h=>h.from&&h.to&&ds>=h.from&&ds<=h.to)}
+function isSchoolDay(d){return dow(d)<5 && !holidayOn(iso(d))}
+function todayISO(){return iso(new Date())}
+
+/* ---------- state ---------- */
+function uid(){return Math.random().toString(36).slice(2,9)}
+function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function subj(id){return S.subjects.find(s=>s.id===id)}
+function subjectAt(pid,di){return S.grid[pid+"|"+di]||""}
+function lk(ds,pid){return ds+"|"+pid}
+function hueOf(id){const s=subj(id);return s?s.hue:210}
+function chip(id){const s=subj(id);return s?`<span class="chip" style="--h:${s.hue}">${esc(s.name)}</span>`:`<span class="chip none">Free</span>`}
+
+function defaultState(){
+  const subjects=[
+    ["lit","Literacy",212],["mat","Numeracy & maths",140],["spl","Spelling & handwriting",268],
+    ["idl","IDL topic",28],["pe","PE",2],["sci","Science",182],["art","Expressive arts",320],
+    ["fr","French",236],["rme","RME",48],["hwb","Health & wellbeing",96],["ass","Assembly",200]
+  ].map(([id,name,hue])=>({id,name,hue}));
+  const periods=[
+    {id:"reg",label:"Register & soft start",start:"09:00",end:"09:15",kind:"break"},
+    {id:"m1",label:"Morning 1",start:"09:15",end:"10:30",kind:"lesson"},
+    {id:"brk",label:"Break",start:"10:30",end:"10:45",kind:"break"},
+    {id:"m2",label:"Morning 2",start:"10:45",end:"11:45",kind:"lesson"},
+    {id:"m3",label:"Morning 3",start:"11:45",end:"12:15",kind:"lesson"},
+    {id:"lun",label:"Lunch",start:"12:15",end:"13:00",kind:"break"},
+    {id:"a1",label:"Afternoon 1",start:"13:00",end:"14:00",kind:"lesson"},
+    {id:"a2",label:"Afternoon 2",start:"14:00",end:"15:00",kind:"lesson"}
+  ];
+  const g={};
+  const rows={m1:["lit","lit","lit","lit","lit"],m2:["mat","mat","mat","mat","mat"],m3:["spl","spl","spl","spl","hwb"],a1:["idl","pe","sci","art","idl"],a2:["fr","rme","idl","pe","ass"]};
+  for(const pid in rows) rows[pid].forEach((s,i)=>g[pid+"|"+i]=s);
+  return {v:1,subjects,periods,grid:g,lessons:{},
+    holidays:[{id:uid(),name:"October week (example: change to your school's dates)",from:"2026-10-12",to:"2026-10-16"}],
+    examples:true,fresh:true,updated:Date.now()};
+}
+function migrate(x){
+  const d=defaultState();
+  if(!x||typeof x!=="object") return d;
+  for(const k of ["subjects","periods","grid","lessons","holidays"]) if(!x[k]) x[k]=d[k];
+  return x;
+}
+function seedExamples(){
+  const seqs={
+    mat:{eo:"MNU 1-03a",list:[
+      ["Adding 2-digit numbers mentally","We are learning to add two 2-digit numbers in our heads.","I can partition both numbers into tens and ones.\nI can explain my strategy to a partner.","Number talk warm-up (5 min): 34 + 25.\nModel partitioning on the class number line.\nPairs: roll two 2-digit numbers and add them, record strategy.\nPlenary: two pairs share different strategies.","Support: 100 square and tens/ones cubes.\nChallenge: add three 2-digit numbers."],
+      ["Bridging through 10","We are learning to add by making the next ten.","I can find the number that makes the next ten.\nI can split the second number to bridge.","Quick fire: number bonds to 10.\nModel 38 + 7 as 38 + 2 + 5 on an empty number line.\nGroup task cards.","Support: bead strings.\nChallenge: bridge through 100."],
+      ["Adding near doubles","We are learning to use doubles to add.","I can spot near doubles.\nI can say which double helps me.","Doubles bingo.\nSort sums into near doubles / not.\nWrite own near-double sums for a partner.",""],
+      ["Subtracting by counting on","We are learning to find the difference by counting on.","I can count on from the smaller number.\nI can show the jumps on a number line.","","" ],
+      ["Finding the difference on a number line","","","",""],
+      ["Word problems: at the shop","","","",""],
+      ["Check-in: addition and subtraction","","","",""]]},
+    lit:{eo:"LIT 1-26a, ENG 1-27a",list:[
+      ["Persuasive letters: what makes a letter persuasive?","We are learning to recognise persuasive writing.","I can find persuasive words in a letter.\nI can say who the letter is trying to persuade.","Read the letter from the class novel together.\nHighlight persuasive words in pairs.\nBuild a class word wall.","Support: word bank with pictures.\nChallenge: rank the reasons from strongest to weakest."],
+      ["Facts and opinions","We are learning to tell a fact from an opinion.","I can sort sentences into fact or opinion.\nI can write one of each.","Fact or opinion stand-up game.\nSorting cards in groups.",""],
+      ["Planning my letter to the head teacher","We are learning to plan a persuasive letter.","I can choose three reasons.\nI can add a because to each reason.","Shared planning frame on the board.\nIndependent plan.",""],
+      ["Drafting: opening paragraph","","","",""],
+      ["Drafting: three reasons with because","","","",""],
+      ["Editing with a partner","","","",""]]},
+    idl:{eo:"SOC 1-04a",list:[
+      ["Castles: why build a castle here?","We are learning why castles were built where they were.","I can give two reasons for a castle's location.","Photos of Stirling and Edinburgh castles.\nMap work in groups.",""],
+      ["Parts of a castle","","","",""],
+      ["Life in a castle: people and jobs","","","",""],
+      ["Design a castle (junk modelling)","","","",""]]}
+  };
+  const start=iso(mondayOf(new Date())), t=todayISO();
+  for(const sid in seqs){
+    const slots=subjectSlots(sid,start,0,21);
+    seqs[sid].list.forEach((L,i)=>{
+      if(!slots[i]) return;
+      S.lessons[slots[i]]={title:L[0],li:L[1],sc:L[2],eo:L[1]?seqs[sid].eo:"",act:L[3],diff:L[4],res:"",notes:"",taught:slots[i].split("|")[0]<t,ex:true};
+    });
+  }
+}
+function load(){
+  try{const raw=localStorage.getItem(KEY); if(raw){S=migrate(JSON.parse(raw));return}}catch(e){}
+  S=defaultState(); seedExamples();
+}
+function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}}
+function commit(){S.updated=Date.now();S.fresh=false;saveLocal();schedulePush()}
+
+/* ---------- slots & push-down ---------- */
+function subjectSlots(sid,fromDate,fromIdx,days=366){
+  const out=[];let d=parseISO(fromDate);
+  for(let i=0;i<days;i++){
+    if(isSchoolDay(d)){
+      const ds=iso(d),di=dow(d);
+      S.periods.forEach((p,pi)=>{
+        if(p.kind!=="lesson")return;
+        if(i===0&&pi<fromIdx)return;
+        if(subjectAt(p.id,di)===sid) out.push(lk(ds,p.id));
+      });
+    }
+    d=addDays(d,1);
+  }
+  return out;
+}
+/* Every lesson not yet taught, from this slot on, slides down one slot of the same subject.
+   Taught lessons stay exactly where they are. */
+function pushDown(sid,ds,pi){
+  const slots=subjectSlots(sid,ds,pi).filter(k=>!(S.lessons[k]&&S.lessons[k].taught));
+  const queue=slots.map(k=>S.lessons[k]||null);
+  let last=queue.length-1;while(last>=0&&!queue[last])last--;
+  if(last<0)return 0;
+  slots.forEach(k=>delete S.lessons[k]);
+  let moved=0;
+  for(let i=0;i<=last;i++){
+    if(!queue[i])continue;
+    const t=slots[i+1]?i+1:i; // no later slot within a year: leave it where it was
+    S.lessons[slots[t]]=queue[i];moved++;
+  }
+  return moved;
+}
+function periodIdx(pid){return S.periods.findIndex(p=>p.id===pid)}
+function nextSlotOf(key){
+  const [ds,pid]=key.split("|");const d=parseISO(ds);const sid=subjectAt(pid,dow(d));
+  const list=subjectSlots(sid,ds,periodIdx(pid)+1);
+  return list.find(k=>!S.lessons[k]) || null;
+}
+function isNow(ds,p){
+  if(ds!==todayISO())return false;
+  const n=new Date(),m=n.getHours()*60+n.getMinutes();
+  const toM=t=>{const [h,mm]=(t||"0:0").split(":").map(Number);return h*60+mm};
+  return m>=toM(p.start)&&m<toM(p.end);
+}
+
+/* ---------- rendering ---------- */
+const $=s=>document.querySelector(s);
+const TICK='<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+function render(){
+  document.querySelectorAll("nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.v===view?"page":"false"));
+  const v=$("#view");
+  if(view==="today")v.innerHTML=renderToday();
+  else if(view==="week")v.innerHTML=renderWeek();
+  else if(view==="subjects")v.innerHTML=renderSubjects();
+  else v.innerHTML=renderSetup();
+  renderSyncChip();
+}
+function exampleBanner(){
+  return S.examples&&Object.values(S.lessons).some(l=>l.ex)?`<div class="example" style="margin-bottom:16px"><span>These are example lessons so you can see how it works.</span><button class="btn sm" data-act="clear-ex">Remove examples</button></div>`:"";
+}
+function renderToday(){
+  const d=parseISO(viewDate),ds=viewDate,di=dow(d),isToday=ds===todayISO();
+  const title=`${DAYS[di]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  let h=`<div class="head"><div><div class="label">${isToday?"Today":"Day"}</div><h1>${title}</h1></div>
+    <div class="navbtns"><button class="btn" data-act="day" data-n="-1" aria-label="Previous school day">‹</button>
+    ${isToday?"":`<button class="btn" data-act="goto-today">Today</button>`}
+    <button class="btn" data-act="day" data-n="1" aria-label="Next school day">›</button></div></div>`+exampleBanner();
+  if(!isSchoolDay(d)){
+    const hol=holidayOn(ds);
+    return h+`<div class="closed"><h2>${hol?esc(hol.name):"No school today"}</h2><p class="muted">Use the arrows to jump to the next school day.</p></div>`;
+  }
+  let planned=0,total=0,taught=0,rows="";
+  for(const p of S.periods){
+    if(p.kind!=="lesson"){rows+=`<div class="slot brk"><div class="time">${esc(p.start)}</div><div class="muted">${esc(p.label)}</div></div>`;continue}
+    const sid=subjectAt(p.id,di),k=lk(ds,p.id),L=S.lessons[k];
+    total++;if(L&&L.title)planned++;if(L&&L.taught)taught++;
+    const now=isNow(ds,p);
+    rows+=`<div class="slot${now?" now":""}" style="--h:${hueOf(sid)}">
+      <div class="time">${esc(p.start)}<br>${esc(p.end)}</div>
+      <button class="open" data-act="open" data-k="${k}">
+        <span class="row" style="gap:8px">${chip(sid)}${now?'<span class="nowtag">Now</span>':""}</span>
+        ${L&&L.title?`<span class="title">${esc(L.title)}</span>${L.li?`<span class="li">${esc(L.li)}</span>`:""}`:`<span class="title empty">+ Plan this lesson</span>`}
+      </button>
+      ${L&&L.title?`<button class="tick" data-act="taught" data-k="${k}" aria-pressed="${!!L.taught}" aria-label="Mark as taught">${TICK}</button>`:"<span></span>"}
+    </div>`;
+  }
+  // gaps for rest of week
+  let gaps="",gc=0;const mon=mondayOf(d);
+  for(let i=0;i<5&&gc<8;i++){
+    const dd=addDays(mon,i),dds=iso(dd);if(dds<todayISO()||!isSchoolDay(dd))continue;
+    for(const p of S.periods){if(p.kind!=="lesson")continue;const sid=subjectAt(p.id,i);if(!sid)continue;const k=lk(dds,p.id);
+      if(!(S.lessons[k]&&S.lessons[k].title)&&gc<8){gc++;gaps+=`<li><button data-act="open" data-k="${k}"><span class="d">${short(dd)}</span>${chip(sid)}</button></li>`}}
+  }
+  let dis="";
+  if(disruptOpen){
+    dis=`<div class="disrupt"><div class="muted" style="font-size:.9rem">Tick the lessons that didn't happen. Everything not yet taught in that subject moves down one slot, right through the term.</div>`;
+    for(const p of S.periods){if(p.kind!=="lesson")continue;const sid=subjectAt(p.id,di);const L=S.lessons[lk(ds,p.id)];const off=!sid||(L&&L.taught);
+      dis+=`<label class="${off?"off":""}"><input type="checkbox" id="dis-${p.id}" value="${p.id}" ${off?"disabled":""}> <span class="mono" style="font-size:.8rem">${esc(p.start)}</span> ${chip(sid)}</label>`}
+    dis+=`<div class="row"><button class="btn primary sm" data-act="disrupt-go">Move lessons down</button><button class="btn ghost sm" data-act="disrupt">Cancel</button></div></div>`;
+  }
+  return h+`<div class="cols"><div class="day">${rows}</div>
+  <aside class="stack">
+    <div class="panel"><div class="stat"><div><b>${planned}/${total}</b><span class="muted">planned</span></div><div><b>${taught}</b><span class="muted">taught</span></div></div></div>
+    <div class="panel"><h3>Day disrupted?</h3><div class="muted" style="font-size:.9rem">Assembly overran, fire drill, trip.</div>
+      ${disruptOpen?dis:`<div><button class="btn" data-act="disrupt">Move lessons down…</button></div>`}</div>
+    <div class="panel"><h3>Still to plan this week</h3>${gaps?`<ul class="gaps">${gaps}</ul>`:`<p class="muted" style="margin:0">Everything's planned.</p>`}</div>
+  </aside></div>`;
+}
+function renderWeek(){
+  const mon=mondayOf(parseISO(viewDate)),t=todayISO();
+  let h=`<div class="head"><div><div class="label">Week beginning</div><h1>${mon.getDate()} ${MONTHS[mon.getMonth()]}</h1></div>
+   <div class="navbtns"><button class="btn" data-act="week" data-n="-7" aria-label="Previous week">‹</button><button class="btn" data-act="goto-today">This week</button><button class="btn" data-act="week" data-n="7" aria-label="Next week">›</button></div></div>`+exampleBanner();
+  let th="<th class='rowh'></th>";
+  for(let i=0;i<5;i++){const d=addDays(mon,i),ds=iso(d),hol=holidayOn(ds);
+    th+=`<th class="${ds===t?"today":""}">${DAYS[i].slice(0,3)} ${d.getDate()}${hol?`<span class="holtag">${esc(hol.name.split("(")[0])}</span>`:""}</th>`}
+  let body="";
+  for(const p of S.periods){
+    if(p.kind!=="lesson"){body+=`<tr class="brk"><th class="rowh">${esc(p.start)}</th><td colspan="5">${esc(p.label)}</td></tr>`;continue}
+    body+=`<tr><th class="rowh"><b>${esc(p.label)}</b><span>${esc(p.start)}–${esc(p.end)}</span></th>`;
+    for(let i=0;i<5;i++){
+      const d=addDays(mon,i),ds=iso(d),sid=subjectAt(p.id,i),k=lk(ds,p.id),L=S.lessons[k];
+      if(!isSchoolDay(d)){body+=`<td><div class="cell hol"></div></td>`;continue}
+      const s=subj(sid);
+      body+=`<td><button class="cell${L&&L.taught?" done":""}" style="--h:${hueOf(sid)}" data-act="open" data-k="${k}">
+        <span class="s">${s?esc(s.name):"Free"}</span>
+        ${L&&L.title?`<span class="t">${esc(L.title)}</span>`:`<span class="t empty">+ Plan</span>`}</button></td>`;
+    }
+    body+="</tr>";
+  }
+  return h+`<div class="wk"><table><thead><tr>${th}</tr></thead><tbody>${body}</tbody></table></div>`;
+}
+function renderSubjects(){
+  const used=S.subjects.filter(s=>Object.values(S.grid).includes(s.id));
+  if(!curSubject||!used.find(s=>s.id===curSubject))curSubject=used[0]&&used[0].id;
+  let h=`<div class="head"><div><div class="label">Subject run</div><h1>${curSubject?esc(subj(curSubject).name):"No subjects yet"}</h1>
+    <div class="sub muted">Every lesson in order, from this week to the next eight.</div></div></div>`;
+  h+=`<div class="subjpick">${used.map(s=>`<button data-act="subj" data-s="${s.id}" aria-pressed="${s.id===curSubject}">${chip(s.id)}</button>`).join("")}</div>`;
+  if(!curSubject)return h;
+  const slots=subjectSlots(curSubject,iso(mondayOf(new Date())),0,63);
+  let rows="",lastWk="";
+  slots.forEach(k=>{
+    const [ds,pid]=k.split("|"),d=parseISO(ds),p=S.periods.find(x=>x.id===pid),L=S.lessons[k];
+    const wk=iso(mondayOf(d));const ws=wk!==lastWk&&lastWk;lastWk=wk;
+    rows+=`<div class="r${ws?" wkstart":""}"><div class="dt">${short(d)}<br>${esc(p.start)}</div>
+      <button class="open" data-act="open" data-k="${k}">${L&&L.title?`<b>${esc(L.title)}</b>`:`<span style="color:var(--accent)">+ Plan this lesson</span>`}</button>
+      <div class="acts">${L&&L.taught?`<span class="done">Taught ✓</span>`:(L&&L.title?`<button class="btn sm" data-act="push" data-k="${k}" title="Move this and every later lesson down one slot">Move down from here</button>`:"")}</div></div>`;
+  });
+  return h+(rows?`<div class="run">${rows}</div>`:`<p class="muted">This subject isn't on the timetable yet. Add it in Setup.</p>`);
+}
+function subjOptions(sel){return `<option value="">Free</option>`+S.subjects.map(s=>`<option value="${s.id}" ${s.id===sel?"selected":""}>${esc(s.name)}</option>`).join("")}
+function renderSetup(){
+  let tt=`<table><thead><tr><th>Name</th><th>Start</th><th>End</th><th>Type</th>${DAYS.slice(0,5).map(d=>`<th>${d.slice(0,3)}</th>`).join("")}<th></th></tr></thead><tbody>`;
+  S.periods.forEach((p,pi)=>{
+    tt+=`<tr><td><input type="text" id="p-${p.id}-label" data-set="p" data-i="${pi}" data-f="label" value="${esc(p.label)}"></td>
+      <td><input type="time" id="p-${p.id}-start" data-set="p" data-i="${pi}" data-f="start" value="${esc(p.start)}"></td>
+      <td><input type="time" id="p-${p.id}-end" data-set="p" data-i="${pi}" data-f="end" value="${esc(p.end)}"></td>
+      <td><select id="p-${p.id}-kind" data-set="p" data-i="${pi}" data-f="kind"><option value="lesson" ${p.kind==="lesson"?"selected":""}>Lesson</option><option value="break" ${p.kind==="break"?"selected":""}>Break</option></select></td>`;
+    for(let i=0;i<5;i++) tt+=`<td>${p.kind==="lesson"?`<select id="g-${p.id}-${i}" data-set="g" data-k="${p.id}|${i}">${subjOptions(subjectAt(p.id,i))}</select>`:""}</td>`;
+    tt+=`<td><button class="btn ghost sm danger" data-act="del-p" data-i="${pi}" aria-label="Remove ${esc(p.label)}">✕</button></td></tr>`;
+  });
+  tt+=`</tbody></table>`;
+  const subs=S.subjects.map((s,i)=>`<div class="subjrow"><input type="text" id="s-${s.id}-name" data-set="s" data-i="${i}" data-f="name" value="${esc(s.name)}">
+    <input type="range" id="s-${s.id}-hue" min="0" max="359" data-set="s" data-i="${i}" data-f="hue" value="${s.hue}" aria-label="Colour for ${esc(s.name)}">
+    ${chip(s.id)}<button class="btn ghost sm danger" data-act="del-s" data-i="${i}" aria-label="Remove ${esc(s.name)}">✕</button></div>`).join("");
+  const hols=S.holidays.map((x,i)=>`<div class="holrow"><input type="text" id="h-${x.id}-name" data-set="h" data-i="${i}" data-f="name" value="${esc(x.name)}" aria-label="Name">
+    <input type="date" id="h-${x.id}-from" data-set="h" data-i="${i}" data-f="from" value="${esc(x.from)}" aria-label="From">
+    <input type="date" id="h-${x.id}-to" data-set="h" data-i="${i}" data-f="to" value="${esc(x.to)}" aria-label="To">
+    <button class="btn ghost sm danger" data-act="del-h" data-i="${i}" aria-label="Remove">✕</button></div>`).join("");
+  return `<div class="head"><div><div class="label">Setup</div><h1>Your class and your week</h1></div></div>
+  <div class="setup">
+    ${exampleBanner()}
+    <section><h2>Timetable</h2><p class="note">Set this once. Each row is a block of the day; pick the subject for each day. Lessons, the week view and "move lessons down" all work from this.</p>
+      <div class="tt">${tt}</div><div><button class="btn" data-act="add-p">Add a row</button></div></section>
+    <section><h2>Subjects</h2><p class="note">Slide to change a subject's colour. The colour follows the subject everywhere.</p>${subs}
+      <div class="row"><input type="text" id="new-subj" placeholder="New subject, e.g. Outdoor learning" style="max-width:320px"><button class="btn" data-act="add-s">Add subject</button></div></section>
+    <section><h2>Holidays and in-service days</h2><p class="note">No lessons are placed on these days, and lessons moving down skip over them.</p>${hols}
+      <div><button class="btn" data-act="add-h">Add dates</button></div></section>
+    ${renderSyncSetup()}
+    <section><h2>Backup</h2><p class="note">Download everything as a file you can keep.</p><div><button class="btn" data-act="export">Download backup</button></div></section>
+  </div>`;
+}
+
+/* ---------- lesson sheet ---------- */
+const FIELDS=[["li","Learning intention","We are learning to…",2],["sc","Success criteria","I can…  (one per line)",3],["eo","Experiences & outcomes","e.g. MNU 1-03a",1],["act","Activities","Starter, main task, plenary",5],["diff","Support and challenge","Support: …\nChallenge: …",3],["res","Resources and links","Paste links to slides, Docs or videos, one per line",2],["notes","After the lesson","How did it go? Next steps?",3]];
+function openSheet(k){
+  openKey=k;const [ds,pid]=k.split("|"),d=parseISO(ds),p=S.periods.find(x=>x.id===pid),sid=subjectAt(pid,dow(d));
+  const L=S.lessons[k]||{};
+  const f=FIELDS.map(([id,lab,ph,rows])=>`<label><span class="label">${lab}</span>${rows===1?`<input type="text" id="ed-${id}" data-ed="${id}" placeholder="${esc(ph)}" value="${esc(L[id]||"")}">`:`<textarea id="ed-${id}" data-ed="${id}" rows="${rows}" placeholder="${esc(ph)}">${esc(L[id]||"")}</textarea>`}${id==="res"?`<span class="links" id="ed-links">${linksHTML(L.res)}</span>`:""}</label>`).join("");
+  $("#sheet-root").innerHTML=`<div class="scrim" data-act="close-bg"><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="ed-title">
+    <div class="sheet-h"><div class="row"><span class="row" style="gap:8px">${chip(sid)}<span class="mono muted" style="font-size:.85rem">${short(d)} · ${esc(p?p.start:"")}</span></span>
+      <button class="btn ghost" data-act="close">Done</button></div>
+      <input type="text" id="ed-title" data-ed="title" placeholder="Lesson title" value="${esc(L.title||"")}"></div>
+    <div class="jot">${f}
+      <label class="row" style="display:flex"><input type="checkbox" id="ed-taught" data-ed="taught" ${L.taught?"checked":""} style="width:22px;height:22px"> <b>Taught</b></label></div>
+    <div class="sheet-f"><button class="btn" data-act="copy-next">Copy to next ${esc(subj(sid)?subj(sid).name:"")} slot</button>
+      <button class="btn" data-act="push" data-k="${k}">Move down from here</button>
+      <button class="btn ghost danger" data-act="del-lesson" style="margin-left:auto">Delete</button></div>
+  </div></div>`;
+  setTimeout(()=>{const t=$("#ed-title");if(t&&!t.value)t.focus()},50);
+}
+function linksHTML(res){return (res||"").split(/\n/).map(s=>s.trim()).filter(s=>/^https?:\/\//i.test(s)).map(u=>`<a href="${esc(u)}" target="_blank" rel="noopener">${esc(u.replace(/^https?:\/\/(www\.)?/,"").slice(0,48))}</a>`).join("")}
+function isEmptyLesson(L){return !L||(!L.taught&&!["title",...FIELDS.map(f=>f[0])].some(f=>(L[f]||"").trim()))}
+function closeSheet(){
+  if(openKey&&isEmptyLesson(S.lessons[openKey])){delete S.lessons[openKey];commit()}
+  openKey=null;$("#sheet-root").innerHTML="";render();
+}
+
+/* ---------- events ---------- */
+function toast(m){const t=$("#toast");t.textContent=m;t.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(()=>t.hidden=true,2600)}
+function stepSchoolDay(n){let d=parseISO(viewDate);for(let i=0;i<30;i++){d=addDays(d,n);if(isSchoolDay(d))break}viewDate=iso(d)}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const a=b.dataset.act;
+  if(a==="close-bg"){if(e.target===b)closeSheet();return}
+  switch(a){
+    case "view":view=b.dataset.v;disruptOpen=false;if(view!=="today"&&view!=="week"){} render();window.scrollTo(0,0);break;
+    case "day":stepSchoolDay(+b.dataset.n);disruptOpen=false;render();break;
+    case "week":viewDate=iso(addDays(parseISO(viewDate),+b.dataset.n));render();break;
+    case "goto-today":viewDate=todayISO();render();break;
+    case "open":openSheet(b.dataset.k);break;
+    case "close":closeSheet();break;
+    case "taught":{const L=S.lessons[b.dataset.k];if(L){L.taught=!L.taught;commit();render()}break}
+    case "disrupt":disruptOpen=!disruptOpen;render();break;
+    case "disrupt-go":{
+      const d=parseISO(viewDate),di=dow(d);let n=0,c=0;
+      document.querySelectorAll('.disrupt input:checked').forEach(cb=>{const pi=periodIdx(cb.value);const sid=subjectAt(cb.value,di);if(sid){n+=pushDown(sid,viewDate,pi);c++}});
+      if(!c){toast("Tick at least one lesson first");break}
+      disruptOpen=false;commit();render();toast(`Moved ${n} lesson${n===1?"":"s"} down one slot`);break}
+    case "push":{
+      const k=b.dataset.k,[ds,pid]=k.split("|"),sid=subjectAt(pid,dow(parseISO(ds)));
+      const n=pushDown(sid,ds,periodIdx(pid));commit();
+      if(openKey){openKey=null;$("#sheet-root").innerHTML=""}
+      render();toast(`Moved ${n} lesson${n===1?"":"s"} down one slot`);break}
+    case "copy-next":{
+      const nk=nextSlotOf(openKey);const L=S.lessons[openKey];
+      if(!L||!L.title){toast("Give the lesson a title first");break}
+      if(!nk){toast("No empty slot found for this subject");break}
+      S.lessons[nk]=Object.assign({},L,{taught:false,notes:"",ex:false});commit();
+      const [nds]=nk.split("|");toast("Copied to "+short(parseISO(nds)));break}
+    case "del-lesson":delete S.lessons[openKey];commit();openKey=null;$("#sheet-root").innerHTML="";render();toast("Lesson deleted");break;
+    case "subj":curSubject=b.dataset.s;render();break;
+    case "clear-ex":for(const k in S.lessons)if(S.lessons[k].ex)delete S.lessons[k];S.examples=false;commit();render();toast("Examples removed");break;
+    case "add-p":{const last=S.periods[S.periods.length-1];S.periods.push({id:uid(),label:"New block",start:last?last.end:"09:00",end:last?last.end:"09:30",kind:"lesson"});commit();render();break}
+    case "del-p":{const p=S.periods[+b.dataset.i];if(b.dataset.sure!=="1"){b.dataset.sure="1";b.textContent="Remove?";b.setAttribute("aria-label","Tap again to remove");setTimeout(()=>{if(b.isConnected){b.dataset.sure="";b.textContent="✕"}},3000);break}
+      S.periods.splice(+b.dataset.i,1);for(let i=0;i<5;i++)delete S.grid[p.id+"|"+i];commit();render();break}
+    case "add-s":{const v=$("#new-subj").value.trim();if(!v)break;S.subjects.push({id:uid(),name:v,hue:Math.floor(Math.random()*360)});commit();render();break}
+    case "del-s":{const s=S.subjects[+b.dataset.i];if(b.dataset.sure!=="1"){b.dataset.sure="1";b.textContent="Remove?";setTimeout(()=>{if(b.isConnected){b.dataset.sure="";b.textContent="✕"}},3000);break}
+      S.subjects.splice(+b.dataset.i,1);for(const k in S.grid)if(S.grid[k]===s.id)delete S.grid[k];commit();render();break}
+    case "add-h":S.holidays.push({id:uid(),name:"Holiday",from:"",to:""});commit();render();break;
+    case "del-h":S.holidays.splice(+b.dataset.i,1);commit();render();break;
+    case "export":{const blob=new Blob([JSON.stringify(S,null,1)],{type:"application/json"});const a2=document.createElement("a");a2.href=URL.createObjectURL(blob);a2.download="jotter-backup-"+todayISO()+".json";document.body.appendChild(a2);a2.click();a2.remove();break}
+    case "save-cfg":saveCfg();break;
+    case "signin":auth("in");break;
+    case "signup":auth("up");break;
+    case "signout":sb&&sb.auth.signOut().then(()=>{session=null;render()});break;
+    case "sync-now":pull();break;
+  }
+});
+document.addEventListener("input",e=>{
+  const el=e.target;
+  if(el.dataset.ed&&openKey){
+    const L=S.lessons[openKey]||(S.lessons[openKey]={});
+    L[el.dataset.ed]=el.type==="checkbox"?el.checked:el.value;
+    if(L.ex)L.ex=false;
+    if(el.dataset.ed==="res")$("#ed-links").innerHTML=linksHTML(el.value);
+    commit();
+  }
+  if(el.dataset.set==="s"&&el.dataset.f==="hue"){S.subjects[+el.dataset.i].hue=+el.value;const c=el.nextElementSibling;if(c)c.style.setProperty("--h",el.value)}
+});
+document.addEventListener("change",e=>{
+  const el=e.target,t=el.dataset.set;if(!t)return;
+  if(t==="p"){S.periods[+el.dataset.i][el.dataset.f]=el.value}
+  else if(t==="g"){if(el.value)S.grid[el.dataset.k]=el.value;else delete S.grid[el.dataset.k]}
+  else if(t==="s"){const s=S.subjects[+el.dataset.i];s[el.dataset.f]=el.dataset.f==="hue"?+el.value:el.value}
+  else if(t==="h"){S.holidays[+el.dataset.i][el.dataset.f]=el.value}
+  commit();if(t==="p"&&el.dataset.f==="kind"||t==="s")render();
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape"&&openKey)closeSheet()});
+setInterval(()=>{if(view==="today"&&!openKey&&!disruptOpen)render()},60000);
+
+/* ---------- sync (Supabase) ---------- */
+let sb=null,session=null,syncState="local",syncMsg="",lastSync=null,pushT=null;
+function getCfg(){let c={};try{c=JSON.parse(localStorage.getItem(CFG_KEY)||"{}")}catch(e){}return {url:SUPABASE_URL||c.url||"",key:SUPABASE_ANON_KEY||c.key||""}}
+function saveCfg(){const url=$("#cfg-url").value.trim(),key=$("#cfg-key").value.trim();try{localStorage.setItem(CFG_KEY,JSON.stringify({url,key}))}catch(e){}initSync()}
+function setSync(s,m){syncState=s;syncMsg=m||"";if(s==="ok")lastSync=new Date();renderSyncChip()}
+function renderSyncChip(){
+  const el=$("#sync");if(!el)return;el.dataset.s=syncState;
+  const t=lastSync?String(lastSync.getHours()).padStart(2,"0")+":"+String(lastSync.getMinutes()).padStart(2,"0"):"";
+  el.querySelector("span").textContent={local:"Saved on this device",signedout:"Sign in to sync",syncing:"Syncing…",ok:"Synced "+t,offline:"Offline, will sync later",error:"Sync problem"}[syncState]||"";
+}
+function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement("script");s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s)})}
+async function initSync(){
+  const c=getCfg();if(!c.url||!c.key){setSync("local");if(view==="setup")render();return}
+  try{
+    if(!window.supabase)await loadScript("https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js");
+    sb=window.supabase.createClient(c.url,c.key,{auth:{persistSession:true,autoRefreshToken:true}});
+    const {data}=await sb.auth.getSession();session=data.session;
+    sb.auth.onAuthStateChange((_e,s)=>{const was=!!session;session=s;if(s&&!was)pull();if(!s)setSync("signedout");if(view==="setup")render()});
+    if(session)await pull();else setSync("signedout");
+  }catch(e){setSync(navigator.onLine?"error":"offline",e.message||String(e))}
+  if(view==="setup")render();
+}
+async function pull(){
+  if(!sb||!session)return;
+  if(!navigator.onLine){setSync("offline");return}
+  setSync("syncing");
+  try{
+    const {data,error}=await sb.from("planner").select("data,updated_at").eq("user_id",session.user.id).maybeSingle();
+    if(error)throw error;
+    if(!data){await push();return}
+    const rt=Date.parse(data.updated_at);
+    if(S.fresh||rt>(S.updated||0)){ // remote is newer, or this device has never been edited
+      S=migrate(data.data);S.updated=rt;S.fresh=false;saveLocal();if(!openKey)render();setSync("ok");
+    }else if((S.updated||0)>rt){await push()}
+    else setSync("ok");
+  }catch(e){setSync("error",e.message||String(e))}
+}
+async function push(){
+  if(!sb||!session)return;
+  if(!navigator.onLine){setSync("offline");return}
+  setSync("syncing");
+  try{
+    const {error}=await sb.from("planner").upsert({user_id:session.user.id,data:S,updated_at:new Date(S.updated).toISOString()});
+    if(error)throw error;setSync("ok");
+  }catch(e){setSync("error",e.message||String(e))}
+}
+function schedulePush(){if(!sb||!session)return;clearTimeout(pushT);pushT=setTimeout(push,1500)}
+async function auth(mode){
+  const email=$("#au-email").value.trim(),password=$("#au-pass").value;
+  if(!email||password.length<6){toast("Enter an email and a password of 6+ characters");return}
+  setSync("syncing");
+  const r=mode==="in"?await sb.auth.signInWithPassword({email,password}):await sb.auth.signUp({email,password});
+  if(r.error){setSync("error",r.error.message);toast(r.error.message);render();return}
+  if(mode==="up"&&!r.data.session){setSync("signedout");toast("Check your email to confirm, then sign in");render();return}
+  toast("Signed in");
+}
+function renderSyncSetup(){
+  const c=getCfg();
+  let inner;
+  if(!c.url||!c.key){
+    inner=`<p class="note">Right now everything is saved on this device only. To use the planner on her iPad and a laptop, connect a free Supabase project (Craig: see the README).</p>
+    <div class="grid2"><label><span class="label">Project URL</span><input type="url" id="cfg-url" placeholder="https://xxxx.supabase.co"></label>
+    <label><span class="label">Anon public key</span><input type="text" id="cfg-key" placeholder="eyJhbGciOi…"></label></div>
+    <div><button class="btn" data-act="save-cfg">Connect</button></div>`;
+  }else if(!session){
+    inner=`<p class="note">Sign in with the same email on every device and the planner stays the same on all of them.</p>
+    <div class="grid2"><label><span class="label">Email</span><input type="email" id="au-email" autocomplete="username"></label>
+    <label><span class="label">Password</span><input type="password" id="au-pass" autocomplete="current-password"></label></div>
+    <div class="row"><button class="btn primary" data-act="signin">Sign in</button><button class="btn" data-act="signup">Create account</button></div>`;
+  }else{
+    inner=`<p class="note">Signed in as <b>${esc(session.user.email)}</b>. Changes sync a moment after you make them, and wait if you're offline.</p>
+    <div class="row"><button class="btn" data-act="sync-now">Sync now</button><button class="btn ghost danger" data-act="signout">Sign out</button></div>`;
+  }
+  return `<section><h2>Sync between devices</h2>${inner}${syncState==="error"&&syncMsg?`<p class="note" style="color:var(--warn)">Last sync failed: ${esc(syncMsg)}</p>`:""}</section>`;
+}
+window.addEventListener("online",()=>{if(session)pull()});
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&session&&!openKey)pull()});
+
+/* ---------- start ---------- */
+load();render();initSync();
+if("serviceWorker" in navigator&&location.protocol==="https:"){navigator.serviceWorker.register("sw.js").catch(()=>{})}
+</script>
+</body>
+</html>
