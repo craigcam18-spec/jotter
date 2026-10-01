@@ -1,5 +1,5 @@
 // Keeps Jotter working offline. Bump VERSION whenever index.html changes.
-const VERSION = "jotter-v1";
+const VERSION = "jotter-v2";
 const CORE = ["./", "index.html", "manifest.webmanifest", "icon-192.png", "icon-512.png"];
 
 self.addEventListener("install", e => {
